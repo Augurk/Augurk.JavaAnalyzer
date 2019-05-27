@@ -1,0 +1,14 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <Pattern>%black(%d{ISO8601}) %highlight(%-5level) [%blue(%t)] %-55(%yellow(%logger{15})) : %msg%n%throwable</Pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.apache" level="WARN" />
+    <logger name="httpclient" level="WARN" />
+
+    <root level="trace">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
