@@ -21,14 +21,19 @@ import static io.github.augurk.javaanalyzer.core.analyzers.Predicates.isTargetMe
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.ObjectCreationExpr;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.github.javaparser.ast.visitor.GenericVisitorAdapter;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
+import com.google.common.collect.Maps;
 import io.github.augurk.javaanalyzer.core.AnalyzerContext;
 import io.github.augurk.javaanalyzer.core.collectors.InvocationCollector;
 import io.github.augurk.javaanalyzer.core.collectors.InvokedMethod;
@@ -39,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public class InvocationTreeAnalyzer extends AbstractAnalyzer implements ResolvableType, Signature, Arguments, Expression {
     private static Logger logger = LoggerFactory.getLogger(InvocationTreeAnalyzer.class);
 
-    private ClassOrInterfaceType declaringType;
+    private Map<String, ClassOrInterfaceType> variableTypeMap;
     private List<ImmutablePair<String, String>> argumentTypes;
     private List<MethodDeclaration> interfaceDefinitions;
 
@@ -47,11 +52,20 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
         super(context);
         argumentTypes = Collections.emptyList();
         interfaceDefinitions = Collections.emptyList();
+        variableTypeMap = Maps.newHashMap();
     }
 
     @Override
-    public void visit(ClassOrInterfaceType classOrInterfaceType, InvocationCollector collector) {
-        if (declaringType == null) declaringType = classOrInterfaceType;
+    public void visit(VariableDeclarator variable, InvocationCollector collector) {
+        var visitor = new GenericVisitorAdapter<ClassOrInterfaceType, Void>() {
+            @Override
+            public ClassOrInterfaceType visit(ObjectCreationExpr object, Void arg) {
+                return object.getType();
+            }
+        };
+
+        variableTypeMap.put(variable.getNameAsString(), visitor.visit(variable, null));
+        super.visit(variable, collector);
     }
 
     @Override
@@ -59,7 +73,6 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
         Consumer<ResolvedMethodDeclaration> consumer = method -> handleSolvableMethodCallExpr(method, expression);
         Runnable orElse = () -> handleUnsolvableMethodCallExpr(expression);
         resolvedMethodDeclarationOf(expression).ifPresentOrElse(consumer, orElse);
-        declaringType = null;
     }
 
     private void handleSolvableMethodCallExpr(ResolvedMethodDeclaration method, MethodCallExpr expression) {
@@ -69,6 +82,7 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
     }
 
     private void handleUnsolvableMethodCallExpr(MethodCallExpr expression) {
+        ClassOrInterfaceType declaringType = variableTypeOf(expression, variableTypeMap);
         CompilationUnit unit = compilationUnitOf(declaringType).orElse(currentCompilationUnit);
         var predicate = isTargetMethod(expression.getNameAsString(), expression.getArguments().size());
 
@@ -82,13 +96,15 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
         argumentTypes = extractArguments(method, expression);
 
         findTargetType(unit, qualifiedNameOfDeclaringType(method)).ifPresent(targetType -> {
+            ClassOrInterfaceType declaringType = variableTypeOf(expression, variableTypeMap);
+
             if (declaringType != null && targetType.isInterface()) {
-                handleInterfaceMethod(method);
+                handleInterfaceMethod(declaringType, method);
                 return;
             }
 
-            if (declaringType != null) {
-                handleOverrideMethod(targetType, method);
+            if (declaringType != null && !isSameType(targetType, declaringType)) {
+                handleOverrideMethod(declaringType, targetType, method);
                 return;
             }
 
@@ -96,7 +112,7 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
         });
     }
 
-    private void handleInterfaceMethod(ResolvedMethodDeclaration method) {
+    private void handleInterfaceMethod(ClassOrInterfaceType declaringType, ResolvedMethodDeclaration method) {
         String qualifiedTypeName = qualifiedNameOf(declaringType);
         String signature = signatureOf(method);
         interfaceDefinitions = interfaceDefinitionsOf(qualifiedTypeName, signature);
@@ -132,7 +148,9 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
         });
     }
 
-    private void handleOverrideMethod(ClassOrInterfaceDeclaration type, ResolvedMethodDeclaration method) {
+    private void handleOverrideMethod(ClassOrInterfaceType declaringType, ClassOrInterfaceDeclaration type,
+                                      ResolvedMethodDeclaration method) {
+
         String qualifiedTypeName = qualifiedNameOfDeclaringType(method);
         String signature = signatureOf(method);
         String qualifiedContainingTypeName = qualifiedNameOf(declaringType);
@@ -194,7 +212,7 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
     }
 
     private void collect(MethodDeclaration method) {
-        collect(method.resolve(), true);
+        collect(resolvedMethodDeclarationOf(method), true);
     }
 
     private void collect(ResolvedMethodDeclaration method, boolean isLocal) {
@@ -206,7 +224,7 @@ public class InvocationTreeAnalyzer extends AbstractAnalyzer implements Resolvab
     }
 
     private InvokedMethod invokedMethodOf(MethodDeclaration method) {
-        return invokedMethodOf(method.resolve(), true);
+        return invokedMethodOf(resolvedMethodDeclarationOf(method), true);
     }
 
     private InvokedMethod invokedMethodOf(ResolvedMethodDeclaration method, boolean isLocal) {

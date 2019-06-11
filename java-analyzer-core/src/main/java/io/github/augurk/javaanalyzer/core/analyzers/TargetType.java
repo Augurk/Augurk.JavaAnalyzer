@@ -16,9 +16,11 @@
 
 package io.github.augurk.javaanalyzer.core.analyzers;
 
+import static io.github.augurk.javaanalyzer.core.analyzers.Patterns.CLASS_METHOD_CALL_PATTERN;
 import static io.github.augurk.javaanalyzer.core.analyzers.Predicates.isTargetClassOrInterfaceDeclaration;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -26,10 +28,11 @@ import java.util.stream.Collectors;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithType;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 
-interface TargetType {
+interface TargetType extends QualifiedName {
     default Optional<ClassOrInterfaceDeclaration> findTargetType(CompilationUnit unit, String qualifiedTypeName) {
         var predicate = isTargetClassOrInterfaceDeclaration(qualifiedTypeName);
         return unit.findFirst(ClassOrInterfaceDeclaration.class, predicate);
@@ -48,5 +51,19 @@ interface TargetType {
             .map(interfaceType -> findFunc.apply(interfaceType, signature))
             .flatMap(Optional::stream)
             .collect(Collectors.toUnmodifiableList());
+    }
+
+    default ClassOrInterfaceType variableTypeOf(MethodCallExpr expression,
+                                                Map<String, ClassOrInterfaceType> variableTypeMap) {
+
+        var matcher = CLASS_METHOD_CALL_PATTERN.matcher(expression.toString());
+
+        return matcher.matches()
+            ? variableTypeMap.getOrDefault(matcher.group(1), null)
+            : null;
+    }
+
+    default boolean isSameType(ClassOrInterfaceDeclaration type, ClassOrInterfaceType otherType) {
+        return qualifiedNameOf(type).equals(qualifiedNameOf(otherType));
     }
 }

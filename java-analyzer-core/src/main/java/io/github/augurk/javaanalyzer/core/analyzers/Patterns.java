@@ -22,6 +22,7 @@ final class Patterns {
     public static final Pattern CUCUMBER_JAVA_PACKAGE_PATTERN = Pattern.compile("^cucumber\\.api\\.java\\.(.*)\\.*$");
     public static final Pattern CUCUMBER_JAVA8_PACKAGE_PATTERN = Pattern.compile("^cucumber\\.api\\.java8\\.(.*)$");
     public static final Pattern SUPER_CALL_PATTERN = Pattern.compile("^(?:.*\\.)?super\\..*$");
+    public static final Pattern CLASS_METHOD_CALL_PATTERN = Pattern.compile("^([a-zA-Z_$][a-zA-Z_$0-9]*)\\..*$");
     public static final Pattern AUTOMATION_TARGET_PATTERN =
         Pattern.compile("^io.github.augurk.javaanalyzer.annotations.AutomationTarget$");
 
