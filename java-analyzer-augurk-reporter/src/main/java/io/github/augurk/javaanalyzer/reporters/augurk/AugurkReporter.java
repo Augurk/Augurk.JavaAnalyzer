@@ -23,6 +23,7 @@ import io.github.augurk.javaanalyzer.core.Reporter;
 import io.github.augurk.javaanalyzer.core.domain.AnalysisReport;
 import io.github.augurk.javaanalyzer.core.domain.Invocation;
 import io.github.augurk.javaanalyzer.core.options.AnalyzeOptions;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +83,10 @@ public class AugurkReporter implements Reporter {
             invocationJSON.put(INVOCATION_KIND, rootInvocation.getKind().toString());
             invocationJSON.put(INVOCATION_SIGNATURE, rootInvocation.getSignature());
             invocationJSON.put(REGULAR_EXPRESSIONS, rootInvocation.getRegularExpression());
-            invocationJSON.put(AUTOMATION_TARGETS, rootInvocation.getAutomationTargets());
+
+            if (rootInvocation.getAutomationTargets().length != 0) {
+                invocationJSON.put(AUTOMATION_TARGETS, rootInvocation.getAutomationTargets());
+            }
 
             jObject.append(ROOT_INVOCATIONS, invocationJSON);
             mapInvocations(rootInvocation.getInvocations(), invocationJSON);
@@ -94,9 +98,17 @@ public class AugurkReporter implements Reporter {
             var invocationJSON = new JSONObject();
 
             invocationJSON.put(INVOCATION_KIND, invocation.getKind().toString());
-            invocationJSON.put(INVOCATION_SIGNATURE, invocation.getSignature());
+
+            if (invocation.getSignature() != null) {
+                invocationJSON.put(INVOCATION_SIGNATURE, invocation.getSignature());
+            }
+
             invocationJSON.put(INTERFACE_DEFINITIONS, invocation.getInterfaceDefinitions());
             invocationJSON.put(LOCAL, invocation.isLocal());
+
+            if (invocation.getInvocations().isEmpty()) {
+                invocationJSON.put(INVOCATIONS, new JSONArray());
+            }
 
             jObject.append(INVOCATIONS, invocationJSON);
             mapInvocations(invocation.getInvocations(), invocationJSON);

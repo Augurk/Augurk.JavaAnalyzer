@@ -16,6 +16,7 @@
 
 package io.github.augurk.javaanalyzer.core.analyzers;
 
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
@@ -24,6 +25,10 @@ import com.github.javaparser.resolution.types.ResolvedReferenceType;
 
 interface QualifiedName {
     default String qualifiedNameOf(NormalAnnotationExpr type) {
+        return qualifiedNameOf(type.resolve());
+    }
+
+    default String qualifiedNameOf(ClassOrInterfaceDeclaration type) {
         return qualifiedNameOf(type.resolve());
     }
 

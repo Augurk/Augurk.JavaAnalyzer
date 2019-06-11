@@ -89,7 +89,9 @@ public class InvocationTreeAnalyzerTest {
         when(contextMock.createAnalyzer(any())).thenReturn(Optional.of(new InvocationTreeAnalyzer(contextMock)));
         when(contextMock.parserSourceFileByQualifiedName(anyString())).thenReturn(Optional.of(entryPoint.left));
         when(contextMock.parserSourceFileByQualifiedName("java.io.PrintStream")).thenReturn(Optional.empty());
+
         when(collectorMock.collect(any(InvokedMethod.class))).thenReturn(invocationMock);
+        when(collectorMock.getActualType(anyString())).thenAnswer(a -> a.getArgument(0));
 
         // Act
         target.visit(entryPoint.right, collectorMock);
@@ -142,6 +144,7 @@ public class InvocationTreeAnalyzerTest {
 
         when(collectorMock.collect(any(InvokedMethod.class))).thenReturn(invocationMock);
         when(collectorMock.isAlreadyCollected(any(InvokedMethod.class))).thenReturn(false);
+        when(collectorMock.getActualType(anyString())).thenAnswer(a -> a.getArgument(0));
 
         // Act
         target.visit(entryPoint.right, collectorMock);
@@ -264,6 +267,7 @@ public class InvocationTreeAnalyzerTest {
         when(contextMock.parserSourceFileByQualifiedName(anyString())).thenReturn(Optional.of(entryPoint.left));
         when(contextMock.parserSourceFileByQualifiedName("java.io.PrintStream")).thenReturn(Optional.empty());
 
+        when(collectorMock.getActualType(anyString())).thenAnswer(a -> a.getArgument(0));
         when(collectorMock.getActualType(pair.left)).thenReturn(pair.right);
         when(collectorMock.collect(any(InvokedMethod.class))).thenReturn(invocationMock);
 
@@ -344,6 +348,7 @@ public class InvocationTreeAnalyzerTest {
         when(contextMock.parserSourceFileByQualifiedName("java.io.PrintStream")).thenReturn(Optional.empty());
 
         when(collectorMock.collect(any(InvokedMethod.class))).thenReturn(invocationMock);
+        when(collectorMock.getActualType(anyString())).thenAnswer(a -> a.getArgument(0));
 
         // Act
         target.visit(entryPoint.right, collectorMock);
@@ -353,6 +358,55 @@ public class InvocationTreeAnalyzerTest {
 
         var invocations = invokedMethodCaptor.getAllValues();
         isEqual(invocations.get(0), InvocationKind.PUBLIC, "Callable", "Callable.setList(java.util.List<java.lang.Integer>)", true);
+        isEqual(invocations.get(1), InvocationKind.PUBLIC, "java.io.PrintStream", "java.io.PrintStream.println(java.lang.String)", false);
+    }
+
+    @Test
+    public void visit_ShouldBeAbleToAnalyzeMethodWithObjectInstantiationAndCall() throws Exception {
+        // Arrange
+        var testClazz = "CreateAndCallMethodWithObject.java";
+        var testFile = FileUtils.loadFileByName(ANNOTATION_SOURCES_ROOT, testClazz);
+        var entryPoint = getTargetMethod(testFile, 1);
+
+        when(contextMock.createAnalyzer(any())).thenReturn(Optional.of(new InvocationTreeAnalyzer(contextMock)));
+        when(contextMock.parserSourceFileByQualifiedName(anyString())).thenReturn(Optional.of(entryPoint.left));
+        when(contextMock.parserSourceFileByQualifiedName("java.io.PrintStream")).thenReturn(Optional.empty());
+
+        when(collectorMock.collect(any(InvokedMethod.class))).thenReturn(invocationMock);
+        when(collectorMock.getActualType(anyString())).thenAnswer(a -> a.getArgument(0));
+
+        // Act
+        target.visit(entryPoint.right, collectorMock);
+
+        // Assert
+        verify(collectorMock, times(2)).collect(invokedMethodCaptor.capture());
+
+        var invocations = invokedMethodCaptor.getAllValues();
+        isEqual(invocations.get(0), InvocationKind.PUBLIC, "OrderService", "OrderService.save(Order)", true);
+        isEqual(invocations.get(1), InvocationKind.PUBLIC, "java.io.PrintStream", "java.io.PrintStream.println(java.lang.String)", false);
+    }
+
+    @Test
+    public void visit_ShouldBeAbleToAnalyzeMethodAbstractMethod() throws Exception {
+        // Arrange
+        var testClazz = "ClassWithInheritance.java";
+        var testFile = FileUtils.loadFileByName(ANNOTATION_SOURCES_ROOT, testClazz);
+        var entryPoint = getTargetMethod(testFile);
+
+        when(contextMock.createAnalyzer(any())).thenReturn(Optional.of(new InvocationTreeAnalyzer(contextMock)));
+        when(contextMock.parserSourceFileByQualifiedName(anyString())).thenReturn(Optional.of(entryPoint.left));
+        when(contextMock.parserSourceFileByQualifiedName("java.io.PrintStream")).thenReturn(Optional.empty());
+
+        when(collectorMock.collect(any(InvokedMethod.class))).thenReturn(invocationMock);
+
+        // Act
+        target.visit(entryPoint.right, collectorMock);
+
+        // Assert
+        verify(collectorMock, times(2)).collect(invokedMethodCaptor.capture());
+
+        var invocations = invokedMethodCaptor.getAllValues();
+        isEqual(invocations.get(0), InvocationKind.PUBLIC, "ChildClass", "ChildClass.sayHello()", true);
         isEqual(invocations.get(1), InvocationKind.PUBLIC, "java.io.PrintStream", "java.io.PrintStream.println(java.lang.String)", false);
     }
 

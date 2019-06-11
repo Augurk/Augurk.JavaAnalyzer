@@ -28,6 +28,7 @@ import io.github.augurk.javaanalyzer.core.domain.AnalysisReport;
 import io.github.augurk.javaanalyzer.core.domain.Invocation;
 import io.github.augurk.javaanalyzer.core.domain.InvocationKind;
 import io.github.augurk.javaanalyzer.core.options.AnalyzeOptions;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,6 +77,7 @@ public class AugurkReporterTest {
         when(rootInvocationMock.getKind()).thenReturn(rootInvocationKind);
         when(rootInvocationMock.getSignature()).thenReturn(rootInvocationSignature);
         when(rootInvocationMock.getRegularExpression()).thenReturn(rootInvocationExpressions);
+        when(rootInvocationMock.getAutomationTargets()).thenReturn(new String[] {});
         when(rootInvocationMock.getInvocations()).thenReturn(new ArrayDeque<>() {{
             add(invocationMock);
         }});
@@ -99,6 +101,7 @@ public class AugurkReporterTest {
         expectedInvocation.put("Kind", invocationKind.toString());
         expectedInvocation.put("Signature", invocationSignature);
         expectedInvocation.put("Local", invocationIsLocal);
+        expectedInvocation.put("Invocations", new JSONArray());
 
         expectedRootInvocation.append("Invocations", expectedInvocation);
         expected.append("RootInvocations", expectedRootInvocation);
