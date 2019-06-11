@@ -22,13 +22,12 @@ import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
-public interface Arguments extends ResolvableType, QualifiedName {
+public interface Arguments extends ResolvableType {
     default <T> T extractKeyValueFromPairsAs(Class<T> as, String key, NodeList<MemberValuePair> pairs) {
         Expression expression = extractKeyValueFromPairs(key, pairs);
         if (expression == null) return null;
@@ -69,19 +68,5 @@ public interface Arguments extends ResolvableType, QualifiedName {
         }
 
         return argumentsTypes;
-    }
-
-    default boolean argumentTypesContains(List<ImmutablePair<String, String>> argumentTypes,
-                                          ClassOrInterfaceType declaringType) {
-
-        String qualifiedName = qualifiedNameOf(declaringType);
-
-        for (var pair : argumentTypes) {
-            if (pair.left.equals(qualifiedName) || pair.right.equals(qualifiedName)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
